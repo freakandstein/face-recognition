@@ -238,8 +238,7 @@ extension MainView: AVCaptureVideoDataOutputSampleBufferDelegate {
         }
         
         do {
-            guard let lastRequest = requests.last else { return }
-            try self.sequenceRequestHandler.perform([lastRequest], on: pixelBuffer, orientation: exifOrientation)
+            try self.sequenceRequestHandler.perform(requests, on: pixelBuffer, orientation: exifOrientation)
         } catch let error as NSError {
             NSLog("Failed to perform SequenceRequest: %@", error)
         }
@@ -248,7 +247,7 @@ extension MainView: AVCaptureVideoDataOutputSampleBufferDelegate {
         for trackingRequest in requests {
             guard let results = trackingRequest.results else { return }
             guard let observation = results.first as? VNDetectedObjectObservation else { return }
-            
+
             if !trackingRequest.isLastFrame {
                 if observation.confidence > 0.3 {
                     print("#isBackCameraOn: \(self.backCameraOn)")
@@ -260,7 +259,7 @@ extension MainView: AVCaptureVideoDataOutputSampleBufferDelegate {
             }
         }
         self.trackingRequests = newTrackingRequests
-        
+
         if newTrackingRequests.isEmpty {
             print("#nothing to track, so abort")
             return

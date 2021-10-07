@@ -159,16 +159,23 @@ class MainView: UIViewController {
     private func drawFaceObservations(_ faceObservations: [VNFaceObservation]) {
         let transform = CGAffineTransform(scaleX: 1, y: -1).translatedBy(x: 0, y: -self.previewLayer.bounds.height)
         let scale = CGAffineTransform.identity.scaledBy(x: self.previewLayer.bounds.width, y: self.previewLayer.bounds.height)
-        guard let lastFaceObservation = faceObservations.last else { return }
-        let bounds = lastFaceObservation.boundingBox.applying(scale).applying(transform)
-        DispatchQueue.main.async {
-            if self.faceRectangleView == nil {
+        
+        self.view.subviews.forEach { boundingBox in
+            if !(boundingBox is UIButton) {
+                boundingBox.removeFromSuperview()
+            }
+        }
+        
+        for faceObservation in faceObservations {
+            let bounds = faceObservation.boundingBox.applying(scale).applying(transform)
+            DispatchQueue.main.async {
                 self.faceRectangleView = UIView(frame: bounds)
                 self.faceRectangleView?.backgroundColor = .clear
                 self.faceRectangleView?.layer.borderWidth = 3
                 self.faceRectangleView?.layer.borderColor = UIColor.systemGreen.cgColor
                 guard let boundingBoxView = self.faceRectangleView else { return }
-                let labelName = UILabel(frame: CGRect(x: .zero, y: bounds.height + 4, width: bounds.width, height: 48))
+                let labelFrame = CGRect(x: .zero, y: bounds.height + 4, width: bounds.width, height: 48)
+                let labelName = UILabel(frame: labelFrame)
                 labelName.textAlignment = .center
                 labelName.numberOfLines = 2
                 labelName.text = "Tio Satrio Wicaksono"
@@ -177,14 +184,6 @@ class MainView: UIViewController {
                 labelName.backgroundColor = .black
                 boundingBoxView.addSubview(labelName)
                 self.view.addSubview(boundingBoxView)
-            } else {
-                UIView.animate(withDuration: 0.1, animations: {
-                    self.faceRectangleView?.frame = bounds
-                    guard let faceRectangleView = self.faceRectangleView else { return }
-                    for label in faceRectangleView.subviews where label is UILabel {
-                        label.frame = CGRect(x: .zero, y: bounds.height + 4, width: bounds.width, height: 48)
-                    }
-                })
             }
         }
     }
@@ -261,7 +260,7 @@ extension MainView: AVCaptureVideoDataOutputSampleBufferDelegate {
         }
 
         let imageRequestHandler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, orientation: exifOrientation)
-
+        
         do {
             try imageRequestHandler.perform([faceRectangleRequest])
         } catch let error as NSError {

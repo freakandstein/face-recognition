@@ -149,7 +149,7 @@ class MainView: UIViewController {
             var requests = [VNTrackObjectRequest]()
             for observation in results {
                 let faceTrackingRequest = VNTrackObjectRequest(detectedObjectObservation: observation)
-                faceTrackingRequest.trackingLevel = .accurate
+                faceTrackingRequest.trackingLevel = .fast
                 requests.append(faceTrackingRequest)
             }
             self.trackingRequests = requests
@@ -189,27 +189,6 @@ class MainView: UIViewController {
         }
     }
     
-    func exifOrientationForDeviceOrientation(_ deviceOrientation: UIDeviceOrientation) -> CGImagePropertyOrientation {
-        
-        switch deviceOrientation {
-        case .portraitUpsideDown:
-            return .rightMirrored
-            
-        case .landscapeLeft:
-            return .downMirrored
-            
-        case .landscapeRight:
-            return .upMirrored
-            
-        default:
-            return .leftMirrored
-        }
-    }
-    
-    func exifOrientationForCurrentDeviceOrientation() -> CGImagePropertyOrientation {
-        return exifOrientationForDeviceOrientation(UIDevice.current.orientation)
-    }
-    
     //MARK: IBActions
     @IBAction func switchOnTapped() {
         switchDeviceInput()
@@ -219,7 +198,12 @@ class MainView: UIViewController {
 extension MainView: AVCaptureVideoDataOutputSampleBufferDelegate {
     func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
         guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
-        let exifOrientation = self.exifOrientationForCurrentDeviceOrientation()
+        let exifOrientation: CGImagePropertyOrientation
+        if backCameraOn {
+            exifOrientation = .right
+        } else {
+            exifOrientation = .leftMirrored
+        }
         guard let requests = self.trackingRequests, !requests.isEmpty else {
             let imageRequestHandler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, orientation: exifOrientation)
             do {
@@ -250,7 +234,6 @@ extension MainView: AVCaptureVideoDataOutputSampleBufferDelegate {
 
             if !trackingRequest.isLastFrame {
                 if observation.confidence > 0.3 {
-                    print("#isBackCameraOn: \(self.backCameraOn)")
                     trackingRequest.inputObservation = observation
                 } else {
                     trackingRequest.isLastFrame = true

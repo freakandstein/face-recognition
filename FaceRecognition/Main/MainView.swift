@@ -23,17 +23,27 @@ class MainView: UIViewController {
     private var videoOutput : AVCaptureVideoDataOutput!
     private var backCameraOn = true
     
-    private var trackingRequests: [VNTrackObjectRequest]?
-    private var detectionRequests: [VNDetectFaceRectanglesRequest]?
     private var faceRectangleView: UIView?
     private var sequenceRequestHandler = VNSequenceRequestHandler()
     
-    lazy private var faceDetectionRequest: VNDetectFaceRectanglesRequest = {
-        let faceDetectRectangleRequest = VNDetectFaceRectanglesRequest { request, error in
-            guard let results = request.results as? [VNFaceObservation] else { fatalError("unexpected result type!") }
-            self.handleFaceDetectionResults(results)
+    private lazy var faceRecognitionRequest: VNCoreMLRequest = {
+        do {
+            if #available(iOS 12.0, *) {
+                let configModel = MLModelConfiguration()
+                let faceRecognitionModel = try FaceRecognitionDetection(configuration: configModel).model
+                let model = try VNCoreMLModel(for: faceRecognitionModel)
+                let faceRecognitionRequest = VNCoreMLRequest(model: model) { [weak self] request, error in
+                    guard let faceObservations = request.results as? [VNRecognizedObjectObservation] else { return }
+                    self?.drawFaceObservations(faceObservations)
+                }
+                faceRecognitionRequest.imageCropAndScaleOption = .centerCrop
+                return faceRecognitionRequest
+            } else {
+                fatalError("Failed to open model due to the OS version")
+            }
+        } catch {
+            fatalError("Failed to open model")
         }
-        return faceDetectRectangleRequest
     }()
     
     //MARK: IBOutlets
@@ -52,7 +62,6 @@ class MainView: UIViewController {
         super.viewDidLoad()
         navigationController?.navigationBar.isHidden = true
         setupAVSession()
-        detectionRequests = [faceDetectionRequest]
     }
     
     // Ensure that the interface stays locked in Portrait.
@@ -144,28 +153,21 @@ class MainView: UIViewController {
         captureSession.removeInput(backInput)
     }
     
-    private func handleFaceDetectionResults(_ results: [VNFaceObservation]) {
+    private func resetBoundingBox() {
         DispatchQueue.main.async {
-            var requests = [VNTrackObjectRequest]()
-            for observation in results {
-                let faceTrackingRequest = VNTrackObjectRequest(detectedObjectObservation: observation)
-                faceTrackingRequest.trackingLevel = .fast
-                requests.append(faceTrackingRequest)
+            self.view.subviews.forEach { boundingBox in
+                if !(boundingBox is UIButton) {
+                    boundingBox.removeFromSuperview()
+                }
             }
-            self.trackingRequests = requests
         }
     }
     
-    private func drawFaceObservations(_ faceObservations: [VNFaceObservation]) {
+    @available(iOS 12.0, *)
+    private func drawFaceObservations(_ faceObservations: [VNRecognizedObjectObservation]) {
+        resetBoundingBox()
         let transform = CGAffineTransform(scaleX: 1, y: -1).translatedBy(x: 0, y: -self.previewLayer.bounds.height)
         let scale = CGAffineTransform.identity.scaledBy(x: self.previewLayer.bounds.width, y: self.previewLayer.bounds.height)
-        
-        self.view.subviews.forEach { boundingBox in
-            if !(boundingBox is UIButton) {
-                boundingBox.removeFromSuperview()
-            }
-        }
-        
         for faceObservation in faceObservations {
             let bounds = faceObservation.boundingBox.applying(scale).applying(transform)
             DispatchQueue.main.async {
@@ -174,14 +176,15 @@ class MainView: UIViewController {
                 self.faceRectangleView?.layer.borderWidth = 3
                 self.faceRectangleView?.layer.borderColor = UIColor.systemGreen.cgColor
                 guard let boundingBoxView = self.faceRectangleView else { return }
-                let labelFrame = CGRect(x: .zero, y: bounds.height + 4, width: bounds.width, height: 48)
+                let labelFrame = CGRect(x: .zero, y: -48, width: bounds.width, height: 48)
                 let labelName = UILabel(frame: labelFrame)
-                labelName.textAlignment = .center
+                let confidence = Int((faceObservation.labels[0].confidence / 1.0) * 100)
+                labelName.textAlignment = .left
                 labelName.numberOfLines = 2
-                labelName.text = "Tio Satrio Wicaksono"
-                labelName.font = UIFont.boldSystemFont(ofSize: 18.0)
+                labelName.text = faceObservation.labels[0].identifier + " (\(confidence)%)"
+                labelName.font = UIFont.boldSystemFont(ofSize: 22.0)
                 labelName.textColor = .systemGreen
-                labelName.backgroundColor = .black
+                labelName.backgroundColor = .clear
                 boundingBoxView.addSubview(labelName)
                 self.view.addSubview(boundingBoxView)
             }
@@ -203,68 +206,11 @@ extension MainView: AVCaptureVideoDataOutputSampleBufferDelegate {
         } else {
             exifOrientation = .leftMirrored
         }
-        guard let requests = self.trackingRequests, !requests.isEmpty else {
-            let imageRequestHandler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, orientation: exifOrientation)
-            do {
-                guard let detectRequests = self.detectionRequests else { return }
-                try imageRequestHandler.perform(detectRequests)
-                
-                // Remove any face rectangle
-                DispatchQueue.main.async {
-                    self.faceRectangleView?.removeFromSuperview()
-                    self.faceRectangleView = nil
-                }
-            } catch let error as NSError {
-                NSLog("Failed to perform FaceRectangleRequest: %@", error)
-            }
-            return
-        }
-        
+        let imageHandler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, orientation: exifOrientation)
         do {
-            try self.sequenceRequestHandler.perform(requests, on: pixelBuffer, orientation: exifOrientation)
-        } catch let error as NSError {
-            NSLog("Failed to perform SequenceRequest: %@", error)
-        }
-        
-        var newTrackingRequests = [VNTrackObjectRequest]()
-        for trackingRequest in requests {
-            guard let results = trackingRequest.results else { return }
-            guard let observation = results.first as? VNDetectedObjectObservation else { return }
-
-            if !trackingRequest.isLastFrame {
-                if observation.confidence > 0.3 {
-                    trackingRequest.inputObservation = observation
-                } else {
-                    trackingRequest.isLastFrame = true
-                }
-                newTrackingRequests.append(trackingRequest)
-            }
-        }
-        self.trackingRequests = newTrackingRequests
-
-        if newTrackingRequests.isEmpty {
-            print("#nothing to track, so abort")
-            return
-        }
-        
-        let faceRectangleRequest = VNDetectFaceRectanglesRequest { request, error in
-            if (error != nil) {
-                print("Face detect rectangle error")
-            }
-
-            guard let rectangleRequest = request as? VNDetectFaceRectanglesRequest, let results = rectangleRequest.results else { return }
-
-            DispatchQueue.main.async {
-                self.drawFaceObservations(results)
-            }
-        }
-
-        let imageRequestHandler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, orientation: exifOrientation)
-        
-        do {
-            try imageRequestHandler.perform([faceRectangleRequest])
-        } catch let error as NSError {
-            NSLog("Failed to perform FaceLandmarkRequest: %@", error)
+            try imageHandler.perform([faceRecognitionRequest])
+        } catch {
+            resetBoundingBox()
         }
     }
 }

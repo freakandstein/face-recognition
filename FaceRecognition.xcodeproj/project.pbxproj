@@ -12,7 +12,7 @@
 		7E0C605D26F0B96300A83D50 /* MainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E0C605C26F0B96300A83D50 /* MainView.swift */; };
 		7E0C606226F0B96400A83D50 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 7E0C606126F0B96400A83D50 /* Assets.xcassets */; };
 		7E0C606D26F0BE4100A83D50 /* MainView.xib in Resources */ = {isa = PBXBuildFile; fileRef = 7E0C606C26F0BE4100A83D50 /* MainView.xib */; };
-		7E0C607026F0FF2000A83D50 /* FaceRecognitionModel.mlmodel in Sources */ = {isa = PBXBuildFile; fileRef = 7E0C606F26F0FF2000A83D50 /* FaceRecognitionModel.mlmodel */; };
+		7EA473BF27118B78003A9D42 /* FaceRecognitionDetection.mlmodel in Sources */ = {isa = PBXBuildFile; fileRef = 7EA473BE27118B78003A9D42 /* FaceRecognitionDetection.mlmodel */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -23,7 +23,7 @@
 		7E0C606126F0B96400A83D50 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		7E0C606626F0B96400A83D50 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		7E0C606C26F0BE4100A83D50 /* MainView.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = MainView.xib; sourceTree = "<group>"; };
-		7E0C606F26F0FF2000A83D50 /* FaceRecognitionModel.mlmodel */ = {isa = PBXFileReference; lastKnownFileType = file.mlmodel; path = FaceRecognitionModel.mlmodel; sourceTree = "<group>"; };
+		7EA473BE27118B78003A9D42 /* FaceRecognitionDetection.mlmodel */ = {isa = PBXFileReference; lastKnownFileType = file.mlmodel; path = FaceRecognitionDetection.mlmodel; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -56,7 +56,7 @@
 		7E0C605726F0B96300A83D50 /* FaceRecognition */ = {
 			isa = PBXGroup;
 			children = (
-				7E0C606F26F0FF2000A83D50 /* FaceRecognitionModel.mlmodel */,
+				7EA473BE27118B78003A9D42 /* FaceRecognitionDetection.mlmodel */,
 				7E0C606E26F0BFF500A83D50 /* Main */,
 				7E0C605826F0B96300A83D50 /* AppDelegate.swift */,
 				7E0C605A26F0B96300A83D50 /* SceneDelegate.swift */,
@@ -145,8 +145,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				7E0C605D26F0B96300A83D50 /* MainView.swift in Sources */,
-				7E0C607026F0FF2000A83D50 /* FaceRecognitionModel.mlmodel in Sources */,
 				7E0C605926F0B96300A83D50 /* AppDelegate.swift in Sources */,
+				7EA473BF27118B78003A9D42 /* FaceRecognitionDetection.mlmodel in Sources */,
 				7E0C605B26F0B96300A83D50 /* SceneDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
